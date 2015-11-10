@@ -1,0 +1,11 @@
+<use name="FWCore/Framework"/>
+<use name="FWCore/PluginManager"/>
+<use name="FWCore/ParameterSet"/>
+<use name="FWCore/Utilities"/>
+<use name="CommonTools/UtilAlgos"/>
+<use name="DataFormats/Candidate"/>
+<use name="DataFormats/HepMCCandidate"/>
+<use name="FWCore/ServiceRegistry"/>
+<use name="ggA_GenLevel_Analyzer/VariousFunctions"/>
+<use name="root"/>
+<flags EDM_PLUGIN="1"/>
