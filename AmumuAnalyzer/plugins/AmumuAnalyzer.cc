@@ -65,7 +65,14 @@ class AmumuAnalyzer : public edm::EDAnalyzer {
       virtual void endJob() override;
       void reset(const bool);
       double mass;
+      double pt_of_muon_from_tau;
+      double pt_of_higher_muon;
+      double pt_of_lower_muon;
       TH2F* DeltaR_a_and_tau_VS_pt_of_a_;
+      TH2F* DeltaR_two_tau_VS_pt_of_a_;
+      TH2F* DeltaR_two_mu_VS_pt_of_a_;
+      TH2F* pt_of_muon_from_tau_VS_pt_of_higher_muon_;
+      TH2F* pt_of_muon_from_tau_VS_pt_of_lower_muon_;
       TFile* out_;
       std::string outFileName_;
       edm::InputTag genParticleTag_;
@@ -116,12 +123,27 @@ void AmumuAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   //now do what ever initialization is needed
   edm::Handle<reco::GenParticleCollection> pGenParticles;
   iEvent.getByLabel(genParticleTag_, pGenParticles);
+  bool tau_mu=false;
   for(reco::GenParticleCollection::const_iterator iGenParticle = pGenParticles->begin(); iGenParticle != pGenParticles->end(); ++iGenParticle){
+    //this is from bottom to top
+    if((fabs(iGenParticle->pdgId())==13) && (fabs(iGenParticle->mother()->pdgId())!=13))
+    {
+      if(fabs(iGenParticle->mother()->pdgId())==15)
+      { 
+        if(fabs(iGenParticle->mother()->mother()->pdgId())==36)
+        {
+          pt_of_muon_from_tau=iGenParticle->pt();
+          histos1D_["pt_of_muon_from_tau"]->Fill(pt_of_muon_from_tau);
+          tau_mu=true;
+        }
+      }
+    }
+
+    //this is from top to bottom
     if((*iGenParticle).pdgId() == 35 && ((*iGenParticle).numberOfDaughters()==2) )
     {
       reco::GenParticleRef child0 = iGenParticle->daughterRef(0);
       reco::GenParticleRef child1 = iGenParticle->daughterRef(1);
-      //std::cout << "\tmom pdgid=" << iGenParticle->pdgId() << "\tchild0 pdgid=" << child0->pdgId() <<"\tchild1 pdgid=" << child1->pdgId() << std::endl;
       if(child0->pdgId() == 36 && child1->pdgId()==36 && (child0->numberOfDaughters()==2)&&(child1->numberOfDaughters()==2) )
       { 
         reco::GenParticleRef childchild00=child0->daughterRef(0);
@@ -130,58 +152,66 @@ void AmumuAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         reco::GenParticleRef childchild11=child1->daughterRef(1);
         if(fabs(childchild00->pdgId())==13 &&( fabs(childchild10->pdgId())==15))
         {
-         // std::cout << "\tthen mom pdgid=" << child0->pdgId() << "\tchildchild00" << childchild00->pdgId() << "\tchildchild01" << childchild01->pdgId() <<std::endl;
-          //std::cout << "\tAnd mom pdgid=" << child1->pdgId() << "\tchildchild10" << childchild10->pdgId() << "\tchildchild11" << childchild11->pdgId() <<std::endl;
-          //std::cout << "\tStatus of Tau" << childchild10->status() << std::endl;
-          //std::cout << "\tStatus of Mu" << childchild00->status() << std::endl;
+          
           mass=0.0;
  	  mass=child0->mass();     
           double DR_tau=VariousFunctions::getDiThingDR_1(childchild10, childchild11);
           double DR_mu=VariousFunctions::getDiThingDR_1(childchild00, childchild01);
           double DR_a_and_tau=VariousFunctions::getDiThingDR_1(child1, childchild11);
           double p_of_a=child1->pt();
+          pt_of_higher_muon=VariousFunctions::getHigherPt( childchild00, childchild01);
+          pt_of_lower_muon=VariousFunctions::getLowerPt( childchild00, childchild01);  
           if(DR_tau > 2.0)
           {
             std::cout<<"eta" << childchild10->eta() << "phi"<< childchild10->phi()<< "pt of a"<< p_of_a <<std::endl;
             std::cout<<"eta" << childchild11->eta() << "phi"<< childchild11->phi() <<std::endl;
           }  
-          //mass=sqrt((child1->energy()+child0->energy())*(child1->energy()+child0->energy())
-	  //	-(child1->px()+child0->px())*(child1->px()+child0->px())
-	  //	-(child1->py()+child0->py())*(child1->py()+child0->py())
-	  //	-(child1->pz()+child0->pz())*(child1->pz()+child0->pz()));
-          //reco::LeafCandidate::LorentzVector sum;
-          //sum=child0->p4() + child1->p4();
           histos1D_[ "test" ]->Fill(child0->mass());
-          histos1D_[ "DeltaR" ]->Fill(DR_tau);
-          histos1D_[ "DeltaR_mu" ]->Fill(DR_mu);
+          histos1D_[ "DeltaR_of_2_tau_decayed_from_same_higgs" ]->Fill(DR_tau);
+          histos1D_[ "DeltaR_of_2_mu_decayed_from_same_higgs" ]->Fill(DR_mu);
           histos2D_[ "DeltaR_a_and_tau_VS_p_of_a" ]->Fill(DR_a_and_tau, p_of_a);
+          histos1D_[ "pt_of_higher_muon" ]->Fill(pt_of_higher_muon);
+          histos1D_[ "pt_of_lower_muon" ]->Fill(pt_of_lower_muon); 
           DeltaR_a_and_tau_VS_pt_of_a_->Fill(DR_a_and_tau, p_of_a);
+          DeltaR_two_tau_VS_pt_of_a_->Fill(DR_tau, p_of_a);
+          DeltaR_two_mu_VS_pt_of_a_->Fill(DR_mu, p_of_a);
+          std::cout <<"second test of bool"  << tau_mu << std::endl;
+          if(tau_mu)
+          {
+            pt_of_muon_from_tau_VS_pt_of_higher_muon_->Fill(pt_of_muon_from_tau, pt_of_higher_muon); 
+            pt_of_muon_from_tau_VS_pt_of_lower_muon_->Fill(pt_of_muon_from_tau, pt_of_lower_muon);
+          }
+           
         }
        if(fabs(childchild10->pdgId())==13 &&( fabs(childchild00->pdgId())==15))
         {
-         // std::cout << "\tthen mom pdgid=" << child0->pdgId() << "\tchildchild00" << childchild00->pdgId() << "\tchildchild01" << childchild01->pdgId() <<std::endl;
-         // std::cout << "\tAnd mom pdgid=" << child1->pdgId() << "\tchildchild10" << childchild10->pdgId() << "\tchildchild11" << childchild11->pdgId() <<std::endl;
-         // std::cout << "\tStatus of Tau" << childchild00->status() << std::endl;
-         // std::cout << "\tStatus of Mu" << childchild10->status() << std::endl;
           mass=0.0;
           mass=child0->mass();
           double DR_tau=VariousFunctions::getDiThingDR_1(childchild00, childchild01);
     
           double DR_mu=VariousFunctions::getDiThingDR_1(childchild10, childchild11);
           double DR_a_and_tau=VariousFunctions::getDiThingDR_1(child0, childchild01);
+
           double p_of_a=child1->pt();
- 
+          pt_of_higher_muon=VariousFunctions::getHigherPt(childchild10,childchild11);
+          pt_of_lower_muon=VariousFunctions::getLowerPt(childchild10,childchild11);
           histos1D_[ "test" ]->Fill(child0->mass());
-          histos1D_[ "DeltaR" ]->Fill(DR_tau);
-          histos1D_[ "DeltaR_mu"] ->Fill(DR_mu);
+          histos1D_[ "DeltaR_of_2_tau_decayed_from_same_higgs" ]->Fill(DR_tau);
+          histos1D_[ "DeltaR_of_2_mu_decayed_from_same_higgs"] ->Fill(DR_mu);
           histos2D_[ "DeltaR_a_and_tau_VS_p_of_a" ]->Fill(DR_a_and_tau, p_of_a);
+          histos1D_[ "pt_of_higher_muon"]->Fill(pt_of_higher_muon);
+          histos1D_[ "pt_of_lower_muon"]->Fill(pt_of_lower_muon);
           DeltaR_a_and_tau_VS_pt_of_a_->Fill(DR_a_and_tau, p_of_a);
-         // std::cout<< "mass is" << mass <<std::endl;
-         // std::cout<< "DR_tau" << DR_tau<<std::endl;
+          DeltaR_two_tau_VS_pt_of_a_->Fill(DR_tau, p_of_a);
+          DeltaR_two_mu_VS_pt_of_a_->Fill(DR_mu, p_of_a);
+          //if(tau_mu)
+            pt_of_muon_from_tau_VS_pt_of_higher_muon_->Fill(pt_of_muon_from_tau, pt_of_higher_muon);  
+            pt_of_muon_from_tau_VS_pt_of_lower_muon_->Fill(pt_of_muon_from_tau, pt_of_lower_muon);
+
         }
       }    
     }
-  }  
+  } 
 }
 
 
@@ -190,6 +220,17 @@ AmumuAnalyzer::reset(const bool doDelete)
 {
   if ((doDelete) && (DeltaR_a_and_tau_VS_pt_of_a_ != NULL)) delete DeltaR_a_and_tau_VS_pt_of_a_;
   DeltaR_a_and_tau_VS_pt_of_a_ = NULL;
+  if ((doDelete) && (DeltaR_two_tau_VS_pt_of_a_ != NULL)) delete DeltaR_two_tau_VS_pt_of_a_;
+  DeltaR_two_tau_VS_pt_of_a_ = NULL;
+  if ((doDelete) && (DeltaR_two_mu_VS_pt_of_a_ != NULL)) delete DeltaR_two_mu_VS_pt_of_a_;
+  DeltaR_two_mu_VS_pt_of_a_ = NULL;
+  if ((doDelete) && (pt_of_muon_from_tau_VS_pt_of_higher_muon_ != NULL)) delete pt_of_muon_from_tau_VS_pt_of_higher_muon_;
+  pt_of_muon_from_tau_VS_pt_of_higher_muon_ = NULL;
+  if ((doDelete) && (pt_of_muon_from_tau_VS_pt_of_lower_muon_ != NULL)) delete pt_of_muon_from_tau_VS_pt_of_lower_muon_;
+  pt_of_muon_from_tau_VS_pt_of_lower_muon_ = NULL;
+
+
+ 
 }
 //
 // member functions
@@ -206,10 +247,18 @@ AmumuAnalyzer::beginJob()
   //jetOutput_.open(jetOutputFileName_.c_str());
   edm::Service< TFileService > fileService;
   histos1D_[ "test" ]=fileService->make< TH1D >("test", "invariant mass of a from DiMuon", 30, 0, 10);
-  histos1D_[ "DeltaR" ]=fileService->make<TH1D>("DeltaR", "DeltaR", 100, 0.0, 5.0);
-  histos1D_[ "DeltaR_mu"]=fileService->make<TH1D>("DeltaR_mu","DeltaR_mu", 100, 0, 5.0);
-  histos2D_[ "DeltaR_a_and_tau_VS_p_of_a" ]=fileService->make<TH2D>("DeltaR_a_and_tau_VS_p_of_a", "DeltaR_a_and_tau_VS_p_of_a", 100, 0, 1.0, 100, 0, 120); 
-  DeltaR_a_and_tau_VS_pt_of_a_ = new TH2F("DeltaR_a_and_tau_VS_pt_of_a", "", 100, 0, 1.0, 100, 0, 120);
+  histos1D_[ "DeltaR_of_2_tau_decayed_from_same_higgs" ]=fileService->make<TH1D>("DeltaR_of_2_tau_decayed_from_same_higgs", "DeltaR_of_2_tau_decayed_from_same_higgs--heavy300_light9", 100, 0.0, 0.5);
+  histos1D_[ "DeltaR_of_2_mu_decayed_from_same_higgs"]=fileService->make<TH1D>("DeltaR_of_2_mu_decayed_from_same_higgs","DeltaR_of_2_mu_decayed_from_same_higgs--heavy300_light9", 100, 0, 0.5);
+  histos2D_[ "DeltaR_a_and_tau_VS_p_of_a" ]=fileService->make<TH2D>("DeltaR_a_and_tau_VS_p_of_a", "DeltaR_a_and_tau_VS_p_of_a--heavy300_light9", 100, 0, 0.5, 100, 0, 500);
+  histos1D_[ "pt_of_higher_muon"]=fileService->make<TH1D>("pt_of_higher_muon","pt_of_higher_muon--heavy300_light9",100,0,500); 
+  histos1D_[ "pt_of_muon_from_tau" ]=fileService->make<TH1D>("pt_of_muon_from_tau", "pt_of_muon_from_tau--heavy300_light9",100,0,500);
+  histos1D_[ "pt_of_lower_muon"]=fileService->make<TH1D>("pt_of_lower_muon","pt_of_lower_muon--heavy300_light9",100,0,500);
+ 
+  DeltaR_a_and_tau_VS_pt_of_a_ = new TH2F("DeltaR_a_and_tau_VS_pt_of_a", "heavy300GeV_light9GeV", 100, 0, 0.5, 100, 0, 500);
+  DeltaR_two_tau_VS_pt_of_a_ = new TH2F("DeltaR_two_tau_VS_pt_of_a", "heavy300GeV_light9GeV", 100, 0, 0.5, 100, 0, 500);
+  DeltaR_two_mu_VS_pt_of_a_ = new TH2F("DeltaR_two_mu_VS_pt_of_a", "heavy300GeV_light9GeV", 100, 0, 0.5, 100, 0, 500);
+  pt_of_muon_from_tau_VS_pt_of_higher_muon_ = new TH2F(" pt_of_muon_from_tau_VS_pt_of_higher_muon", "heavy300GeV_light9GeV", 100, 0, 300, 100, 0, 500);
+  pt_of_muon_from_tau_VS_pt_of_lower_muon_ = new TH2F(" pt_of_muon_from_tau_VS_pt_of_lower_muon", "heavy300GeV_light_9GeV", 100, 0, 300, 100, 0, 500);
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
@@ -218,9 +267,21 @@ AmumuAnalyzer::endJob()
 {
  // jetOutput_.close();
   TCanvas DeltaR_a_and_tau_VS_pt_of_a_Canvas("CanvasName","",600,600);
+  TCanvas DeltaR_two_tau_VS_pt_of_a_Canvas("Canvas2tau","",600,600);
+  TCanvas DeltaR_two_mu_VS_pt_of_a_Canvas("Canvas2mu","",600,600);
+  TCanvas pt_of_muon_from_tau_VS_pt_of_higher_muon_Canvas("Canvas_muon_pts","",600,600);
+  TCanvas pt_of_muon_from_tau_VS_pt_of_lower_muon_Canvas("Canvas_muonl_pts","",600,600);
   VariousFunctions::formatAndDrawCanvasAndHist2D(DeltaR_a_and_tau_VS_pt_of_a_Canvas, DeltaR_a_and_tau_VS_pt_of_a_, 0, 0, 0, kBlack, 7, 20, "Delta_R_of_a_and_tau", .04, .04, 1.1, "pt of a", .04, .04, 1.6, "", .04, .04, 1.0);
+  VariousFunctions::formatAndDrawCanvasAndHist2D(DeltaR_two_tau_VS_pt_of_a_Canvas, DeltaR_two_tau_VS_pt_of_a_, 0, 0, 0, kBlack, 7, 20, "Delta_R_of_two_tau", .04, .04, 1.1, "pt of a", .04, .04, 1.6, "", .04, .04, 1.0);
+  VariousFunctions::formatAndDrawCanvasAndHist2D(DeltaR_two_mu_VS_pt_of_a_Canvas, DeltaR_two_mu_VS_pt_of_a_, 0, 0, 0, kBlack, 7, 20, "Delta_R_of_two_mu", .04, .04, 1.1, "pt of a", .04, .04, 1.6, "", .04, .04, 1.0);
+  VariousFunctions::formatAndDrawCanvasAndHist2D(pt_of_muon_from_tau_VS_pt_of_higher_muon_Canvas, pt_of_muon_from_tau_VS_pt_of_higher_muon_, 0, 0, 0, kBlack, 7, 20, "pt_of_muon_from_tau", .04, .04, 1.1, "pt_of_higher_muon_from_a",.04, .04, 1.6, "", .04, .04, 1.0);
+  VariousFunctions::formatAndDrawCanvasAndHist2D(pt_of_muon_from_tau_VS_pt_of_lower_muon_Canvas, pt_of_muon_from_tau_VS_pt_of_lower_muon_, 0, 0, 0, kBlack, 7, 20, "pt_of_muon_from_tau", .04, .04, 1.1, "pt_of_lower_muon_from_a",.04, .04, 1.6, "", .04, .04, 1.0);
   out_->cd();
   DeltaR_a_and_tau_VS_pt_of_a_Canvas.Write();
+  DeltaR_two_tau_VS_pt_of_a_Canvas.Write();
+  DeltaR_two_mu_VS_pt_of_a_Canvas.Write();
+  pt_of_muon_from_tau_VS_pt_of_higher_muon_Canvas.Write();
+  pt_of_muon_from_tau_VS_pt_of_lower_muon_Canvas.Write(); 
   out_->Write();
   out_->Close();
 }

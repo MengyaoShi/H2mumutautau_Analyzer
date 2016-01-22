@@ -24,5 +24,7 @@ class VariousFunctions {
                                            const char*, const Float_t, const Float_t, const Float_t, 
 				           const char*, const Float_t, const Float_t, const Float_t,
   					   const char*, const Float_t, const Float_t, const Float_t);
+    static double getHigherPt(const reco::GenParticleRef&, const reco::GenParticleRef&);
+    static double getLowerPt(const reco::GenParticleRef&, const reco::GenParticleRef&);
 };
 #endif

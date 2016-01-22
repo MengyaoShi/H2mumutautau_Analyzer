@@ -379,3 +379,24 @@ void VariousFunctions::formatAndDrawCanvasAndHist2D(TCanvas& canvas, TH2F* hist,
   hist->Draw("COLZ");
 
 }//VariousFunctions::formatAndDrawCanvasAndHist1D
+  
+
+double VariousFunctions::getHigherPt(const reco::GenParticleRef& thing1, const reco::GenParticleRef& thing2){
+  double pt_of_thing1= thing1->pt();
+  double pt_of_thing2= thing2->pt();
+  if(pt_of_thing1 > pt_of_thing2)
+    return pt_of_thing1;
+  else
+    return pt_of_thing2;
+}
+
+double VariousFunctions::getLowerPt(const reco::GenParticleRef& thing1, const reco::GenParticleRef& thing2){
+  double pt_of_thing1= thing1->pt();
+  double pt_of_thing2= thing2->pt();
+  if(pt_of_thing1 < pt_of_thing2)
+    return pt_of_thing1;
+  else
+    return pt_of_thing2;
+}
+
+
