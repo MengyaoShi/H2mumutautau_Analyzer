@@ -17,6 +17,7 @@ class VariousFunctions {
     static int tauDecayMode(const reco::GenParticleRef &);
     static reco::LeafCandidate::LorentzVector sumTauP4(const reco::GenParticleRef&, const int, const bool);
     static double getDiTauDR(const reco::GenParticleRef&, const reco::GenParticleRef&, const bool);
+    static double getMuTauDR(const reco::GenParticleRef&, const reco::GenParticleRef&, const bool);
     static double getDiThingDR_1(const reco::GenParticleRef&, const reco::GenParticleRef&);
     static void formatAndDrawCanvasAndHist2D(TCanvas&, TH2F*, 
                                            const Int_t, const Int_t, const Int_t, 
@@ -26,5 +27,6 @@ class VariousFunctions {
   					   const char*, const Float_t, const Float_t, const Float_t);
     static double getHigherPt(const reco::GenParticleRef&, const reco::GenParticleRef&);
     static double getLowerPt(const reco::GenParticleRef&, const reco::GenParticleRef&);
+    static reco::GenParticleRef getHigherPtObj(const reco::GenParticleRef&, const reco::GenParticleRef&);
 };
 #endif
